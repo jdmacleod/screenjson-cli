@@ -1,0 +1,57 @@
+# Git
+.git/
+.gitignore
+
+# Documentation (not needed in image)
+*.md
+!go.md
+docs/
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
+*.env
+
+# Test files and examples (reduce image size)
+tests/
+examples/
+
+# Build artifacts (we build fresh in Docker)
+screenjson
+*.exe
+dist/
+build/
+out/
+vendor/
+
+# Logs
+*.log
+logs/
+
+# Temp
+tmp/
+temp/
+*.tmp
+
+# Secrets
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+
+# Docker files (avoid recursion)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
