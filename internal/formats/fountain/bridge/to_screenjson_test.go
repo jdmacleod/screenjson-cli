@@ -2,13 +2,24 @@ package bridge
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"screenjson/cli/internal/formats/fountain/codec"
 	ftnmodel "screenjson/cli/internal/formats/fountain/model"
+	"screenjson/cli/internal/model"
 )
 
-// TestToScreenJSONBasic tests basic Fountain document conversion
+// testdataPath returns the absolute path to a testdata fixture file
+func testdataPath(filename string) string {
+	// Get the directory of this test file (bridge/) and go up to fountain/
+	_, currentFile, _, _ := runtime.Caller(1)
+	bridgeDir := filepath.Dir(currentFile)
+	fountainDir := filepath.Dir(bridgeDir)
+	return filepath.Join(fountainDir, "testdata", filename)
+}
 func TestToScreenJSONBasic(t *testing.T) {
 	ftnDoc := &ftnmodel.Document{
 		TitlePage: &ftnmodel.TitlePage{
@@ -42,7 +53,9 @@ func TestToScreenJSONBasic(t *testing.T) {
 	}
 }
 
-// TestSceneNumberExtract tests scene number extraction with normalization
+// TestSceneNumberExtract tests scene number extraction by the bridge layer
+// Bridge transfers sceneNo from already-extracted ftnmodel.Element.SceneNo to ScreenJSON Slugline.No
+// (Actual extraction from Fountain text happens in codec and is tested separately)
 func TestSceneNumberExtract(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -199,5 +212,220 @@ func TestFountainEndToEndExplicitSceneNo(t *testing.T) {
 	}
 	if screenDoc.Content.Scenes[1].Body[0].SceneNo != "2B" {
 		t.Fatalf("expected second scene first element SceneNo 2B, got %q", screenDoc.Content.Scenes[1].Body[0].SceneNo)
+	}
+}
+
+// TestActionElementWithNumber tests that Fountain Action elements with sceneNo
+// have their number extracted and preserved.
+func TestActionElementWithNumber(t *testing.T) {
+	// Load fixture file
+	data, err := os.ReadFile(testdataPath("action-with-number.fountain"))
+	if err != nil {
+		t.Fatalf("failed to load fixture: %v", err)
+	}
+
+	// Decode Fountain text
+	decoder := codec.NewDecoder()
+	ftnDoc, err := decoder.Decode(context.Background(), data)
+	if err != nil {
+		t.Fatalf("failed to decode Fountain fixture: %v", err)
+	}
+
+	// Bridge to ScreenJSON
+	screenDoc := ToScreenJSON(ftnDoc, "en")
+
+	if len(screenDoc.Content.Scenes[0].Body) == 0 {
+		t.Fatal("expected body elements")
+	}
+	if screenDoc.Content.Scenes[0].Body[0].SceneNo != "42" {
+		t.Errorf("action sceneNo = %q, want '42'", screenDoc.Content.Scenes[0].Body[0].SceneNo)
+	}
+	if screenDoc.Content.Scenes[0].Body[0].Text["en"] != "He walks to the door." {
+		t.Errorf("action text = %q, want 'He walks to the door.'", screenDoc.Content.Scenes[0].Body[0].Text["en"])
+	}
+}
+
+// TestCharacterElementWithNumber tests that Fountain Character elements with sceneNo
+// have their number extracted and preserved.
+func TestCharacterElementWithNumber(t *testing.T) {
+	// Load fixture file
+	data, err := os.ReadFile(testdataPath("character-with-number.fountain"))
+	if err != nil {
+		t.Fatalf("failed to load fixture: %v", err)
+	}
+
+	// Decode Fountain text
+	decoder := codec.NewDecoder()
+	ftnDoc, err := decoder.Decode(context.Background(), data)
+	if err != nil {
+		t.Fatalf("failed to decode Fountain fixture: %v", err)
+	}
+
+	// Bridge to ScreenJSON
+	screenDoc := ToScreenJSON(ftnDoc, "en")
+
+	if len(screenDoc.Content.Scenes[0].Body) < 2 {
+		t.Fatal("expected at least 2 body elements")
+	}
+	charElem := screenDoc.Content.Scenes[0].Body[0]
+	if charElem.SceneNo != "1A" {
+		t.Errorf("character sceneNo = %q, want '1A'", charElem.SceneNo)
+	}
+}
+
+// TestDialogueElementWithNumber tests that Fountain Dialogue elements with sceneNo
+// have their number extracted and preserved.
+func TestDialogueElementWithNumber(t *testing.T) {
+	// Load fixture file
+	data, err := os.ReadFile(testdataPath("dialogue-with-number.fountain"))
+	if err != nil {
+		t.Fatalf("failed to load fixture: %v", err)
+	}
+
+	// Decode Fountain text
+	decoder := codec.NewDecoder()
+	ftnDoc, err := decoder.Decode(context.Background(), data)
+	if err != nil {
+		t.Fatalf("failed to decode Fountain fixture: %v", err)
+	}
+
+	// Bridge to ScreenJSON
+	screenDoc := ToScreenJSON(ftnDoc, "en")
+
+	if len(screenDoc.Content.Scenes[0].Body) < 2 {
+		t.Fatal("expected at least 2 body elements")
+	}
+	dialogueElem := screenDoc.Content.Scenes[0].Body[1]
+	if dialogueElem.SceneNo != "110A/111B" {
+		t.Errorf("dialogue sceneNo = %q, want '110A/111B'", dialogueElem.SceneNo)
+	}
+	if dialogueElem.Text["en"] != "That's all folks!" {
+		t.Errorf("dialogue text = %q, want 'That's all folks!'", dialogueElem.Text["en"])
+	}
+}
+
+// TestElementWithoutNumber tests that elements without SceneNo
+// have empty sceneNo string.
+func TestElementWithoutNumber(t *testing.T) {
+	// Load fixture file
+	data, err := os.ReadFile(testdataPath("elements-without-numbers.fountain"))
+	if err != nil {
+		t.Fatalf("failed to load fixture: %v", err)
+	}
+
+	// Decode Fountain text
+	decoder := codec.NewDecoder()
+	ftnDoc, err := decoder.Decode(context.Background(), data)
+	if err != nil {
+		t.Fatalf("failed to decode Fountain fixture: %v", err)
+	}
+
+	// Bridge to ScreenJSON
+	screenDoc := ToScreenJSON(ftnDoc, "en")
+	body := screenDoc.Content.Scenes[0].Body
+
+	if body[0].SceneNo != "" {
+		t.Errorf("action sceneNo = %q, want empty", body[0].SceneNo)
+	}
+	if body[1].SceneNo != "" {
+		t.Errorf("character sceneNo = %q, want empty", body[1].SceneNo)
+	}
+	if body[2].SceneNo != "" {
+		t.Errorf("dialogue sceneNo = %q, want empty", body[2].SceneNo)
+	}
+}
+
+// TestFountainRoundTripElementNumbers tests that element numbers are preserved
+// when converting ScreenJSON back to Fountain.
+func TestFountainRoundTripElementNumbers(t *testing.T) {
+	// Create ScreenJSON with element numbers
+	screenDoc := &model.Document{
+		Lang:  "en",
+		Title: model.Text{"en": "Round Trip Test"},
+		Content: &model.Content{
+			Scenes: []model.Scene{
+				{
+					ID:      "scene-1",
+					Authors: []string{"author-1"},
+					Heading: &model.Slugline{
+						No:      "",
+						Context: "INT",
+						Setting: "OFFICE",
+						Time:    "DAY",
+					},
+					Body: []model.Element{
+						{
+							ID:      "elem-1",
+							Type:    model.ElementAction,
+							Authors: []string{"author-1"},
+							Text:    model.Text{"en": "Action with number"},
+							SceneNo: "42",
+						},
+						{
+							ID:        "elem-2",
+							Type:      model.ElementCharacter,
+							Authors:   []string{"author-1"},
+							Character: "char-1",
+							Display:   "",
+							SceneNo:   "1A",
+						},
+						{
+							ID:      "elem-3",
+							Type:    model.ElementDialogue,
+							Authors: []string{"author-1"},
+							Text:    model.Text{"en": "Hello there"},
+							SceneNo: "1A",
+						},
+					},
+					Cast: []string{"char-1"},
+				},
+			},
+		},
+		Characters: []model.Character{
+			{
+				ID:   "char-1",
+				Name: "John Smith",
+			},
+		},
+	}
+
+	// Convert to Fountain
+	ftnDoc := FromScreenJSON(screenDoc, "en")
+
+	// Find the elements we care about
+	actionFound := false
+	charFound := false
+	dialogueFound := false
+
+	t.Log("Fountain elements:")
+	for _, elem := range ftnDoc.Elements {
+		if elem.Type == ftnmodel.ElementAction {
+			t.Logf("  Action: %q", elem.Text)
+			if elem.Text == "Action with number #42#" {
+				actionFound = true
+			}
+		}
+		if elem.Type == ftnmodel.ElementCharacter {
+			t.Logf("  Character: %q", elem.Text)
+			if elem.Text == "JOHN SMITH #1A#" {
+				charFound = true
+			}
+		}
+		if elem.Type == ftnmodel.ElementDialogue {
+			t.Logf("  Dialogue: %q", elem.Text)
+			if elem.Text == "Hello there #1A#" {
+				dialogueFound = true
+			}
+		}
+	}
+
+	if !actionFound {
+		t.Error("expected action with number at end in Fountain output (format: 'text #NUMBER#')")
+	}
+	if !charFound {
+		t.Error("expected character with number at end in Fountain output (format: 'JOHN SMITH #1A#')")
+	}
+	if !dialogueFound {
+		t.Error("expected dialogue with number at end in Fountain output")
 	}
 }

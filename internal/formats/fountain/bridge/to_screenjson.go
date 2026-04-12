@@ -149,12 +149,16 @@ func convertContent(ftn *ftnmodel.Document, authorID string, charMap map[string]
 			if currentScene == nil {
 				currentScene = createDefaultScene(authorID, "")
 			}
+			elemSceneNo := sceneNumberStr
+			if elem.SceneNo != "" {
+				elemSceneNo = model.NormalizeSceneNumber(elem.SceneNo)
+			}
 			currentScene.Body = append(currentScene.Body, model.Element{
 				ID:      uuid.New().String(),
 				Type:    model.ElementAction,
 				Authors: []string{authorID},
 				Text:    model.Text{lang: elem.Text},
-				SceneNo: sceneNumberStr,
+				SceneNo: elemSceneNo,
 			})
 
 		case ftnmodel.ElementCharacter:
@@ -163,13 +167,17 @@ func convertContent(ftn *ftnmodel.Document, authorID string, charMap map[string]
 			}
 			name := cleanCharacterName(elem.Text)
 			charID := charMap[strings.ToUpper(name)]
+			elemSceneNo := sceneNumberStr
+			if elem.SceneNo != "" {
+				elemSceneNo = model.NormalizeSceneNumber(elem.SceneNo)
+			}
 			currentScene.Body = append(currentScene.Body, model.Element{
 				ID:        uuid.New().String(),
 				Type:      model.ElementCharacter,
 				Authors:   []string{authorID},
 				Character: charID,
 				Display:   elem.Text,
-				SceneNo:   sceneNumberStr,
+				SceneNo:   elemSceneNo,
 			})
 			// Track cast
 			if charID != "" {
@@ -197,13 +205,17 @@ func convertContent(ftn *ftnmodel.Document, authorID string, charMap map[string]
 					dual = true
 				}
 			}
+			elemSceneNo := sceneNumberStr
+			if elem.SceneNo != "" {
+				elemSceneNo = model.NormalizeSceneNumber(elem.SceneNo)
+			}
 			currentScene.Body = append(currentScene.Body, model.Element{
 				ID:      uuid.New().String(),
 				Type:    model.ElementDialogue,
 				Authors: []string{authorID},
 				Text:    model.Text{lang: elem.Text},
 				Dual:    dual,
-				SceneNo: sceneNumberStr,
+				SceneNo: elemSceneNo,
 			})
 
 		case ftnmodel.ElementParenthetical:

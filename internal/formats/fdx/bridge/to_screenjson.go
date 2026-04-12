@@ -267,31 +267,43 @@ func convertParagraphToElement(p fdxmodel.Paragraph, authorID string, charMap ma
 
 	switch ptype {
 	case "action":
-		return &model.Element{
+		elem := &model.Element{
 			ID:      uuid.New().String(),
 			Type:    model.ElementAction,
 			Authors: []string{authorID},
 			Text:    model.Text{lang: text},
 		}
+		if p.Number != "" {
+			elem.SceneNo = model.NormalizeSceneNumber(p.Number)
+		}
+		return elem
 
 	case "character":
 		name := cleanCharacterName(strings.TrimSpace(text))
 		charID := charMap[strings.ToUpper(name)]
-		return &model.Element{
+		elem := &model.Element{
 			ID:        uuid.New().String(),
 			Type:      model.ElementCharacter,
 			Authors:   []string{authorID},
 			Character: charID,
 			Display:   text,
 		}
+		if p.Number != "" {
+			elem.SceneNo = model.NormalizeSceneNumber(p.Number)
+		}
+		return elem
 
 	case "dialogue":
-		return &model.Element{
+		elem := &model.Element{
 			ID:      uuid.New().String(),
 			Type:    model.ElementDialogue,
 			Authors: []string{authorID},
 			Text:    model.Text{lang: text},
 		}
+		if p.Number != "" {
+			elem.SceneNo = model.NormalizeSceneNumber(p.Number)
+		}
+		return elem
 
 	case "parenthetical":
 		return &model.Element{
