@@ -2,6 +2,7 @@
 package bridge
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -150,7 +151,7 @@ func convertContent(osf *osfmodel.Document, authorID string, charMap map[string]
 					ID:      uuid.New().String(),
 					Authors: []string{authorID},
 					Heading: &model.Slugline{
-						No:      sceneNumber,
+						No:      strconv.Itoa(sceneNumber),
 						Context: "INT",
 						Setting: "UNKNOWN",
 						Time:    "DAY",
@@ -204,7 +205,7 @@ func createScene(text string, authorID string, sceneNumber int, lang string) *mo
 // parseSlugline parses a scene heading string into a Slugline.
 func parseSlugline(text string, sceneNumber int) *model.Slugline {
 	slug := &model.Slugline{
-		No:   sceneNumber,
+		No:   strconv.Itoa(sceneNumber),
 		Time: "DAY",
 	}
 

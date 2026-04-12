@@ -23,10 +23,10 @@ type Scene struct {
 
 // Slugline represents a structured scene heading.
 type Slugline struct {
-	No      int      `json:"no,omitempty"`
+	No      string   `json:"no,omitempty"`
 	Context string   `json:"context"` // INT, EXT, INT/EXT, etc.
 	Setting string   `json:"setting"`
-	Time    string   `json:"time"` // DAY, NIGHT, etc.
+	Time    string   `json:"time"`           // DAY, NIGHT, etc.
 	Mods    []string `json:"mods,omitempty"` // FLASHBACK, INTERCUT, etc.
 	Desc    Text     `json:"desc,omitempty"`
 	Meta    Meta     `json:"meta,omitempty"`

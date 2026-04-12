@@ -351,8 +351,8 @@
       "properties": {
         "no": {
           "description": "Production scene number (optional).",
-          "type": "integer",
-          "minimum": 1
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]*$"
         },
         "context": {
           "description": "INT/EXT style context.",
@@ -434,6 +434,13 @@
         "encrypt": { "$ref": "#/$defs/encrypt" },
         "locked": { "type": "boolean", "default": false },
         "omit": { "type": "boolean", "default": false },
+        "sceneNo": {
+          "description": "Optional source scene number for the element (e.g., '1', '1A', '110A/111B' for split scenes, 'I-1-A' for roman numerals).",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9.\/-]*$",
+          "minLength": 1,
+          "maxLength": 20
+        },
         "revisions": {
           "type": "array",
           "items": { "$ref": "#/$defs/revision" },

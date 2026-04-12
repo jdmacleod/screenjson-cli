@@ -122,7 +122,7 @@ func convertContent(ftn *ftnmodel.Document, authorID string, charMap map[string]
 
 	var scenes []model.Scene
 	var currentScene *model.Scene
-	var sceneNumber int
+	var sceneNumberStr string
 
 	for _, elem := range ftn.Elements {
 		switch elem.Type {
@@ -131,30 +131,35 @@ func convertContent(ftn *ftnmodel.Document, authorID string, charMap map[string]
 			if currentScene != nil {
 				scenes = append(scenes, *currentScene)
 			}
-			sceneNumber++
+
+			// Extract and normalize scene number from element
+			sceneNumberStr = ""
+			if elem.SceneNo != "" {
+				sceneNumberStr = model.NormalizeSceneNumber(elem.SceneNo)
+			}
+
 			currentScene = &model.Scene{
 				ID:      uuid.New().String(),
 				Authors: []string{authorID},
-				Heading: parseSlugline(elem.Text, sceneNumber),
+				Heading: parseSlugline(elem.Text, sceneNumberStr),
 				Body:    []model.Element{},
 			}
 
 		case ftnmodel.ElementAction:
 			if currentScene == nil {
-				sceneNumber++
-				currentScene = createDefaultScene(authorID, sceneNumber)
+				currentScene = createDefaultScene(authorID, "")
 			}
 			currentScene.Body = append(currentScene.Body, model.Element{
 				ID:      uuid.New().String(),
 				Type:    model.ElementAction,
 				Authors: []string{authorID},
 				Text:    model.Text{lang: elem.Text},
+				SceneNo: sceneNumberStr,
 			})
 
 		case ftnmodel.ElementCharacter:
 			if currentScene == nil {
-				sceneNumber++
-				currentScene = createDefaultScene(authorID, sceneNumber)
+				currentScene = createDefaultScene(authorID, "")
 			}
 			name := cleanCharacterName(elem.Text)
 			charID := charMap[strings.ToUpper(name)]
@@ -164,6 +169,7 @@ func convertContent(ftn *ftnmodel.Document, authorID string, charMap map[string]
 				Authors:   []string{authorID},
 				Character: charID,
 				Display:   elem.Text,
+				SceneNo:   sceneNumberStr,
 			})
 			// Track cast
 			if charID != "" {
@@ -181,8 +187,7 @@ func convertContent(ftn *ftnmodel.Document, authorID string, charMap map[string]
 
 		case ftnmodel.ElementDialogue:
 			if currentScene == nil {
-				sceneNumber++
-				currentScene = createDefaultScene(authorID, sceneNumber)
+				currentScene = createDefaultScene(authorID, "")
 			}
 			dual := false
 			// Check if last element was a dual dialogue character
@@ -198,45 +203,46 @@ func convertContent(ftn *ftnmodel.Document, authorID string, charMap map[string]
 				Authors: []string{authorID},
 				Text:    model.Text{lang: elem.Text},
 				Dual:    dual,
+				SceneNo: sceneNumberStr,
 			})
 
 		case ftnmodel.ElementParenthetical:
 			if currentScene == nil {
-				sceneNumber++
-				currentScene = createDefaultScene(authorID, sceneNumber)
+				currentScene = createDefaultScene(authorID, "")
 			}
 			currentScene.Body = append(currentScene.Body, model.Element{
 				ID:      uuid.New().String(),
 				Type:    model.ElementParenthetical,
 				Authors: []string{authorID},
 				Text:    model.Text{lang: elem.Text},
+				SceneNo: sceneNumberStr,
 			})
 
 		case ftnmodel.ElementTransition:
 			if currentScene == nil {
-				sceneNumber++
-				currentScene = createDefaultScene(authorID, sceneNumber)
+				currentScene = createDefaultScene(authorID, "")
 			}
 			currentScene.Body = append(currentScene.Body, model.Element{
 				ID:      uuid.New().String(),
 				Type:    model.ElementTransition,
 				Authors: []string{authorID},
 				Text:    model.Text{lang: elem.Text},
+				SceneNo: sceneNumberStr,
 			})
 
 		case ftnmodel.ElementCentered, ftnmodel.ElementLyrics:
 			if currentScene == nil {
-				sceneNumber++
-				currentScene = createDefaultScene(authorID, sceneNumber)
+				currentScene = createDefaultScene(authorID, "")
 			}
 			currentScene.Body = append(currentScene.Body, model.Element{
 				ID:      uuid.New().String(),
 				Type:    model.ElementGeneral,
 				Authors: []string{authorID},
 				Text:    model.Text{lang: elem.Text},
+				SceneNo: sceneNumberStr,
 			})
 
-		// Skip blank, section, synopsis, note, boneyard, page break
+			// Skip blank, section, synopsis, note, boneyard, page break
 		}
 	}
 
@@ -249,7 +255,7 @@ func convertContent(ftn *ftnmodel.Document, authorID string, charMap map[string]
 }
 
 // createDefaultScene creates a default scene.
-func createDefaultScene(authorID string, sceneNumber int) *model.Scene {
+func createDefaultScene(authorID string, sceneNumber string) *model.Scene {
 	return &model.Scene{
 		ID:      uuid.New().String(),
 		Authors: []string{authorID},
@@ -264,7 +270,7 @@ func createDefaultScene(authorID string, sceneNumber int) *model.Scene {
 }
 
 // parseSlugline parses a scene heading into a Slugline.
-func parseSlugline(text string, sceneNumber int) *model.Slugline {
+func parseSlugline(text string, sceneNumber string) *model.Slugline {
 	slug := &model.Slugline{
 		No:   sceneNumber,
 		Time: "DAY",

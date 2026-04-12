@@ -19,26 +19,29 @@ const (
 // This is a unified type that covers all element types.
 type Element struct {
 	// Common fields
-	ID           string       `json:"id"`
-	Type         ElementType  `json:"type"`
-	Scene        string       `json:"scene,omitempty"`
-	Authors      []string     `json:"authors"` // UUIDs
-	Contributors []string     `json:"contributors,omitempty"`
-	Access       []string     `json:"access,omitempty"`
-	Notes        []Note       `json:"notes,omitempty"`
-	Charset      string       `json:"charset,omitempty"`
-	Dir          string       `json:"dir,omitempty"`
-	Class        string       `json:"class,omitempty"`
-	DOM          string       `json:"dom,omitempty"`
-	Encrypt      *Encrypt     `json:"encrypt,omitempty"`
-	Locked       bool         `json:"locked,omitempty"`
-	Omit         bool         `json:"omit,omitempty"`
-	Revisions    []Revision   `json:"revisions,omitempty"`
-	Styles       []string     `json:"styles,omitempty"`
-	Meta         Meta         `json:"meta,omitempty"`
+	ID           string      `json:"id"`
+	Type         ElementType `json:"type"`
+	Scene        string      `json:"scene,omitempty"`
+	Authors      []string    `json:"authors"` // UUIDs
+	Contributors []string    `json:"contributors,omitempty"`
+	Access       []string    `json:"access,omitempty"`
+	Notes        []Note      `json:"notes,omitempty"`
+	Charset      string      `json:"charset,omitempty"`
+	Dir          string      `json:"dir,omitempty"`
+	Class        string      `json:"class,omitempty"`
+	DOM          string      `json:"dom,omitempty"`
+	Encrypt      *Encrypt    `json:"encrypt,omitempty"`
+	Locked       bool        `json:"locked,omitempty"`
+	Omit         bool        `json:"omit,omitempty"`
+	Revisions    []Revision  `json:"revisions,omitempty"`
+	Styles       []string    `json:"styles,omitempty"`
+	Meta         Meta        `json:"meta,omitempty"`
 
 	// Text content (for action, dialogue, parenthetical, transition, shot, general)
 	Text Text `json:"text,omitempty"`
+
+	// Scene number from source format
+	SceneNo string `json:"sceneNo,omitempty"` // Optional scene number (e.g., "1A", "I-1-A")
 
 	// Character-specific fields
 	Character string `json:"character,omitempty"` // UUID for cue and dialogue
