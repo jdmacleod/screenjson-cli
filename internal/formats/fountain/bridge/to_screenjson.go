@@ -171,14 +171,33 @@ func convertContent(ftn *ftnmodel.Document, authorID string, charMap map[string]
 			if elem.SceneNo != "" {
 				elemSceneNo = model.NormalizeSceneNumber(elem.SceneNo)
 			}
-			currentScene.Body = append(currentScene.Body, model.Element{
-				ID:        uuid.New().String(),
-				Type:      model.ElementCharacter,
-				Authors:   []string{authorID},
-				Character: charID,
-				Display:   elem.Text,
-				SceneNo:   elemSceneNo,
-			})
+
+			// Handle multi-character or single character
+			if elem.Multi {
+				// Multi-character: create character cue with Multi flag
+				multiGroupID := uuid.New().String()
+				currentScene.Body = append(currentScene.Body, model.Element{
+					ID:         uuid.New().String(),
+					Type:       model.ElementCharacter,
+					Authors:    []string{authorID},
+					Character:  charID,
+					Display:    elem.Text,
+					SceneNo:    elemSceneNo,
+					Multi:      true,
+					MultiGroup: multiGroupID,
+				})
+			} else {
+				// Single character: original logic
+				currentScene.Body = append(currentScene.Body, model.Element{
+					ID:        uuid.New().String(),
+					Type:      model.ElementCharacter,
+					Authors:   []string{authorID},
+					Character: charID,
+					Display:   elem.Text,
+					SceneNo:   elemSceneNo,
+				})
+			}
+
 			// Track cast
 			if charID != "" {
 				found := false
@@ -198,25 +217,54 @@ func convertContent(ftn *ftnmodel.Document, authorID string, charMap map[string]
 				currentScene = createDefaultScene(authorID, "")
 			}
 			dual := false
-			// Check if last element was a dual dialogue character
-			if len(currentScene.Body) > 0 {
-				last := currentScene.Body[len(currentScene.Body)-1]
-				if last.Type == model.ElementCharacter && last.Dual {
-					dual = true
+			var multiGroupID string
+
+			// Check if this is multi-character dialogue
+			if elem.Multi {
+				// Multi-character dialogue: extract character IDs from the text (slash-separated)
+				// For now, we'll set MultiCharacters when bridging from Fountain
+				multiGroupID = uuid.New().String()
+
+				// Parse character names from dialogue text with slashes
+				// This will be enhanced during full implementation
+				var charIDs []string
+
+				elemSceneNo := sceneNumberStr
+				if elem.SceneNo != "" {
+					elemSceneNo = model.NormalizeSceneNumber(elem.SceneNo)
 				}
+
+				currentScene.Body = append(currentScene.Body, model.Element{
+					ID:              uuid.New().String(),
+					Type:            model.ElementDialogue,
+					Authors:         []string{authorID},
+					Text:            model.Text{lang: elem.Text},
+					Multi:           true,
+					MultiGroup:      multiGroupID,
+					MultiCharacters: charIDs,
+					SceneNo:         elemSceneNo,
+				})
+			} else {
+				// Single character dialogue: check if last element was a dual dialogue character
+				if len(currentScene.Body) > 0 {
+					last := currentScene.Body[len(currentScene.Body)-1]
+					if last.Type == model.ElementCharacter && last.Dual {
+						dual = true
+					}
+				}
+				elemSceneNo := sceneNumberStr
+				if elem.SceneNo != "" {
+					elemSceneNo = model.NormalizeSceneNumber(elem.SceneNo)
+				}
+				currentScene.Body = append(currentScene.Body, model.Element{
+					ID:      uuid.New().String(),
+					Type:    model.ElementDialogue,
+					Authors: []string{authorID},
+					Text:    model.Text{lang: elem.Text},
+					Dual:    dual,
+					SceneNo: elemSceneNo,
+				})
 			}
-			elemSceneNo := sceneNumberStr
-			if elem.SceneNo != "" {
-				elemSceneNo = model.NormalizeSceneNumber(elem.SceneNo)
-			}
-			currentScene.Body = append(currentScene.Body, model.Element{
-				ID:      uuid.New().String(),
-				Type:    model.ElementDialogue,
-				Authors: []string{authorID},
-				Text:    model.Text{lang: elem.Text},
-				Dual:    dual,
-				SceneNo: elemSceneNo,
-			})
 
 		case ftnmodel.ElementParenthetical:
 			if currentScene == nil {

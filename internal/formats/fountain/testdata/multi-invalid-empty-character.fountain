@@ -1,0 +1,9 @@
+Title: Invalid - Empty Character Name
+Author: Test
+
+INT. OFFICE - DAY
+
+JOHN / / JANE
+Something wrong? / Yes!
+
+This should be rejected due to empty character name.

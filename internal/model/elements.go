@@ -54,6 +54,12 @@ type Element struct {
 	// Shot-specific fields
 	FOV         float64 `json:"fov,omitempty"`
 	Perspective string  `json:"perspective,omitempty"` // 2D or 3D
+
+	// Multi-character dialogue fields
+	Multi               bool     `json:"multi,omitempty"`               // Indicates part of multi-character group
+	MultiGroup          string   `json:"multiGroup,omitempty"`          // UUID linking group elements (character cues, dialogue, parenthetical)
+	MultiCharacters     []string `json:"multiCharacters,omitempty"`     // Character UUIDs in dialogue element
+	AppliesToMultiGroup bool     `json:"appliesToMultiGroup,omitempty"` // For parentheticals that apply to entire group
 }
 
 // Note represents an ancillary note attached to an element.
@@ -140,5 +146,45 @@ func NewGeneral(id string, authors []string, text Text) Element {
 		Type:    ElementGeneral,
 		Authors: authors,
 		Text:    text,
+	}
+}
+
+// NewMultiCharacterCue creates a character cue as part of a multi-character group.
+func NewMultiCharacterCue(id string, authors []string, characterID string, display string, multiGroupID string) Element {
+	return Element{
+		ID:         id,
+		Type:       ElementCharacter,
+		Authors:    authors,
+		Character:  characterID,
+		Display:    display,
+		Multi:      true,
+		MultiGroup: multiGroupID,
+	}
+}
+
+// NewMultiCharacterDialogue creates a dialogue element for a multi-character group.
+func NewMultiCharacterDialogue(id string, authors []string, characterIDs []string, text Text, multiGroupID string, origin string) Element {
+	return Element{
+		ID:              id,
+		Type:            ElementDialogue,
+		Authors:         authors,
+		MultiCharacters: characterIDs,
+		Text:            text,
+		Multi:           true,
+		MultiGroup:      multiGroupID,
+		Origin:          origin,
+	}
+}
+
+// NewMultiCharacterParenthetical creates a parenthetical as part of a multi-character group.
+func NewMultiCharacterParenthetical(id string, authors []string, text Text, multiGroupID string) Element {
+	return Element{
+		ID:                  id,
+		Type:                ElementParenthetical,
+		Authors:             authors,
+		Text:                text,
+		Multi:               true,
+		MultiGroup:          multiGroupID,
+		AppliesToMultiGroup: true,
 	}
 }

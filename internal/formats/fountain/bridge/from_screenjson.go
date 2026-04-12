@@ -159,8 +159,9 @@ func convertElement(elem model.Element, charMap map[string]string, lang string) 
 			display = display + " #" + elem.SceneNo + "#"
 		}
 		return &ftnmodel.Element{
-			Type: ftnmodel.ElementCharacter,
-			Text: display,
+			Type:  ftnmodel.ElementCharacter,
+			Text:  display,
+			Multi: elem.Multi,
 		}
 
 	case model.ElementDialogue:
@@ -169,9 +170,10 @@ func convertElement(elem model.Element, charMap map[string]string, lang string) 
 			text = text + " #" + elem.SceneNo + "#"
 		}
 		return &ftnmodel.Element{
-			Type: ftnmodel.ElementDialogue,
-			Text: text,
-			Dual: elem.Dual,
+			Type:  ftnmodel.ElementDialogue,
+			Text:  text,
+			Dual:  elem.Dual,
+			Multi: elem.Multi,
 		}
 
 	case model.ElementParenthetical:
@@ -184,8 +186,9 @@ func convertElement(elem model.Element, charMap map[string]string, lang string) 
 			text = text + ")"
 		}
 		return &ftnmodel.Element{
-			Type: ftnmodel.ElementParenthetical,
-			Text: text,
+			Type:  ftnmodel.ElementParenthetical,
+			Text:  text,
+			Multi: elem.Multi,
 		}
 
 	case model.ElementTransition:

@@ -174,6 +174,112 @@ func extractSceneNumber(text string) (string, string) {
 	return sceneNo, cleanedText
 }
 
+// isMultiCharacterLine checks if a character line contains multiple characters (slash-separated).
+// Example: "JOHN / JANE" → true, "JOHN" → false
+func isMultiCharacterLine(characterText string) bool {
+	sceneNo, cleanedText := extractSceneNumber(characterText)
+	_ = sceneNo // sceneNo already extracted, use cleaned text
+	return strings.Contains(cleanedText, "/")
+}
+
+// parseMultiCharacterNames splits a multi-character line and validates/normalizes names.
+// Example: "  JOHN  /  JANE  " → ["JOHN", "JANE"]
+// Returns error if any name is empty.
+func parseMultiCharacterNames(characterText string) ([]string, error) {
+	sceneNo, cleanedText := extractSceneNumber(characterText)
+	_ = sceneNo // sceneNo already extracted
+
+	parts := strings.Split(cleanedText, "/")
+	var names []string
+
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			return nil, fmt.Errorf("empty character name in multi-character line: %q", characterText)
+		}
+		names = append(names, trimmed)
+	}
+
+	return names, nil
+}
+
+// matchDialogueToCharacters matches dialogue lines to character names.
+// If fewer dialogue lines than characters, the last dialogue line repeats.
+// If more dialogue lines than characters, returns error.
+// Returns slice of (characterName, dialogueLine) pairs.
+func matchDialogueToCharacters(characterNames []string, dialogueLines []string) ([]struct {
+	Name     string
+	Dialogue string
+}, error) {
+	var result []struct {
+		Name     string
+		Dialogue string
+	}
+
+	numChars := len(characterNames)
+	numLines := len(dialogueLines)
+
+	if numLines > numChars {
+		return nil, fmt.Errorf("more dialogue lines (%d) than characters (%d)", numLines, numChars)
+	}
+
+	for i, charName := range characterNames {
+		dialogueLine := dialogueLines[i]
+		if i >= numLines {
+			// Fewer lines than characters: repeat last line
+			dialogueLine = dialogueLines[numLines-1]
+		}
+		result = append(result, struct {
+			Name     string
+			Dialogue string
+		}{Name: charName, Dialogue: dialogueLine})
+	}
+
+	return result, nil
+}
+
+// parseDialogueLines extracts dialogue lines from the next non-blank, non-parenthetical lines.
+// Returns dialogue lines and a count indicating how many lines were consumed.
+func parseDialogueLines(scanner *lineScanner) ([]string, int, error) {
+	var lines []string
+	linesConsumed := 0
+
+	for scanner.hasMore() {
+		nextLine := strings.TrimSpace(scanner.peek())
+
+		// Stop at blank line
+		if nextLine == "" {
+			break
+		}
+
+		// Stop at parenthetical (will be handled separately)
+		if parentheticalPattern.MatchString(nextLine) {
+			break
+		}
+
+		// Stop at scene heading
+		if sceneHeadingPattern.MatchString(nextLine) {
+			break
+		}
+
+		// Stop at character line
+		if characterPattern.MatchString(nextLine) {
+			break
+		}
+
+		// Consume dialogue line
+		scanner.next()
+		lines = append(lines, nextLine)
+		linesConsumed++
+	}
+
+	if len(lines) == 0 {
+		return nil, 0, fmt.Errorf("no dialogue lines found after character")
+	}
+
+	return lines, linesConsumed, nil
+}
+
 // parseContent parses the main screenplay content.
 func parseContent(lines []string) []ftnmodel.Element {
 	var elements []ftnmodel.Element
@@ -326,6 +432,76 @@ func parseContent(lines []string) []ftnmodel.Element {
 		if !lastCharacter && characterPattern.MatchString(trimmed) && scanner.hasMore() {
 			nextLine := strings.TrimSpace(scanner.peek())
 			if nextLine != "" && !sceneHeadingPattern.MatchString(nextLine) {
+				// Check if this is multi-character dialogue
+				if isMultiCharacterLine(trimmed) {
+					// Multi-character dialogue handling
+					charNames, err := parseMultiCharacterNames(trimmed)
+					if err != nil {
+						// Skip multi-character parsing on error, treat as regular action
+						lastCharacter = false
+						continue
+					}
+
+					sceneNo, _ := extractSceneNumber(trimmed)
+
+					// Parse the dialogue lines
+					dialogueLines, _, err := parseDialogueLines(scanner)
+					if err != nil {
+						// No valid dialogue, skip
+						lastCharacter = false
+						continue
+					}
+
+					// Match dialogue to characters
+					matched, err := matchDialogueToCharacters(charNames, dialogueLines)
+					if err != nil {
+						// Dialogue count mismatch error, skip multi-character parsing
+						lastCharacter = false
+						continue
+					}
+
+					// Create character elements for each speaker
+					for _, pair := range matched {
+						elements = append(elements, ftnmodel.Element{
+							Type:    ftnmodel.ElementCharacter,
+							Text:    pair.Name,
+							SceneNo: sceneNo,
+							Multi:   true,
+						})
+					}
+
+					// Create dialogue element
+					dialogueText := ""
+					if len(dialogueLines) > 0 {
+						dialogueText = strings.Join(dialogueLines, " / ")
+					}
+					elements = append(elements, ftnmodel.Element{
+						Type:    ftnmodel.ElementDialogue,
+						Text:    dialogueText,
+						SceneNo: sceneNo,
+						Multi:   true,
+					})
+
+					// Check for parenthetical after dialogue
+					if scanner.hasMore() {
+						peekLine := strings.TrimSpace(scanner.peek())
+						if parentheticalPattern.MatchString(peekLine) {
+							scanner.next()
+							sceneNo, cleanedText := extractSceneNumber(peekLine)
+							elements = append(elements, ftnmodel.Element{
+								Type:    ftnmodel.ElementParenthetical,
+								Text:    cleanedText,
+								SceneNo: sceneNo,
+								Multi:   true,
+							})
+						}
+					}
+
+					lastCharacter = false
+					continue
+				}
+
+				// Single character dialogue (original logic)
 				sceneNo, cleanedText := extractSceneNumber(trimmed)
 				dual := dualDialoguePattern.MatchString(cleanedText)
 				name := dualDialoguePattern.ReplaceAllString(cleanedText, "")

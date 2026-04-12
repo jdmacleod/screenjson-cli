@@ -3,8 +3,8 @@ package model
 
 // Document represents a Fountain screenplay.
 type Document struct {
-	TitlePage  *TitlePage
-	Elements   []Element
+	TitlePage *TitlePage
+	Elements  []Element
 }
 
 // TitlePage holds metadata from the Fountain title page.
@@ -49,6 +49,7 @@ type Element struct {
 	SceneNo string // Optional scene number
 	Dual    bool   // For dual dialogue
 	Forced  bool   // Element type was forced with syntax
+	Multi   bool   // For multi-character dialogue
 }
 
 // Common Fountain syntax patterns
