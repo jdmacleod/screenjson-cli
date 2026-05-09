@@ -226,6 +226,6 @@ if err := validator.Validate(doc); err != nil {
 ## Links & Resources
 
 - [screenjson.com](https://screenjson.com) — ScreenJSON format specification
-- [screenjson-schema](../screenjson-schema/) — Canonical JSON Schema (Draft 2026-01)
+- [screenjson-schema](../screenjson-schema/) — Canonical JSON Schema (Draft 2026-04)
 - [Poppler Documentation](https://poppler.freedesktop.org/)
 - [Fountain Specification](https://fountain.io/)
