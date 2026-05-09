@@ -1,0 +1,24 @@
+name: screenjson-cli
+services:
+  screenjson:
+    build: .
+    depends_on:
+      - gotenberg
+      - tika
+    ports:
+      - "8080:8080"
+    environment:
+      - SCREENJSON_GOTENBERG_URL=http://gotenberg:3000
+      - SCREENJSON_TIKA_URL=http://tika:9998
+      - SCREENJSON_PDFTOHTML=/usr/bin/pdftohtml
+    command: ["serve", "--port", "8080"]
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    ports:
+      - "3000:3000"
+
+  tika:
+    image: apache/tika:3.3.0.0-full
+    ports:
+      - "9998:9998"

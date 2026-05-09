@@ -105,6 +105,9 @@ func convertElementToParagraph(elem model.Element, charMap map[string]string, la
 	case model.ElementAction:
 		p.Type = "Action"
 		p.Text = []fdxmodel.Text{{Content: elem.Text.GetOrDefault(lang)}}
+		if elem.SceneNo != "" {
+			p.Number = elem.SceneNo
+		}
 
 	case model.ElementCharacter:
 		p.Type = "Character"
@@ -115,10 +118,16 @@ func convertElementToParagraph(elem model.Element, charMap map[string]string, la
 			}
 		}
 		p.Text = []fdxmodel.Text{{Content: display}}
+		if elem.SceneNo != "" {
+			p.Number = elem.SceneNo
+		}
 
 	case model.ElementDialogue:
 		p.Type = "Dialogue"
 		p.Text = []fdxmodel.Text{{Content: elem.Text.GetOrDefault(lang)}}
+		if elem.SceneNo != "" {
+			p.Number = elem.SceneNo
+		}
 
 	case model.ElementParenthetical:
 		p.Type = "Parenthetical"

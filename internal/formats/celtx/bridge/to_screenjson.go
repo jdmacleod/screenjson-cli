@@ -2,6 +2,7 @@
 package bridge
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -130,14 +131,14 @@ func convertContent(project *celtxmodel.Project, authorID string, charMap map[st
 				currentScene = &model.Scene{
 					ID:      uuid.New().String(),
 					Authors: []string{authorID},
-					Heading: parseSlugline(elem.Text, sceneNumber),
+					Heading: parseSlugline(elem.Text, strconv.Itoa(sceneNumber)),
 					Body:    []model.Element{},
 				}
 
 			case celtxmodel.TypeAction:
 				if currentScene == nil {
 					sceneNumber++
-					currentScene = createDefaultScene(authorID, sceneNumber)
+					currentScene = createDefaultScene(authorID, strconv.Itoa(sceneNumber))
 				}
 				currentScene.Body = append(currentScene.Body, model.Element{
 					ID:      uuid.New().String(),
@@ -149,7 +150,7 @@ func convertContent(project *celtxmodel.Project, authorID string, charMap map[st
 			case celtxmodel.TypeCharacter:
 				if currentScene == nil {
 					sceneNumber++
-					currentScene = createDefaultScene(authorID, sceneNumber)
+					currentScene = createDefaultScene(authorID, strconv.Itoa(sceneNumber))
 				}
 				name := cleanCharacterName(elem.Text)
 				charID := charMap[strings.ToUpper(name)]
@@ -167,7 +168,7 @@ func convertContent(project *celtxmodel.Project, authorID string, charMap map[st
 			case celtxmodel.TypeDialog:
 				if currentScene == nil {
 					sceneNumber++
-					currentScene = createDefaultScene(authorID, sceneNumber)
+					currentScene = createDefaultScene(authorID, strconv.Itoa(sceneNumber))
 				}
 				currentScene.Body = append(currentScene.Body, model.Element{
 					ID:      uuid.New().String(),
@@ -179,7 +180,7 @@ func convertContent(project *celtxmodel.Project, authorID string, charMap map[st
 			case celtxmodel.TypeParenthetical:
 				if currentScene == nil {
 					sceneNumber++
-					currentScene = createDefaultScene(authorID, sceneNumber)
+					currentScene = createDefaultScene(authorID, strconv.Itoa(sceneNumber))
 				}
 				currentScene.Body = append(currentScene.Body, model.Element{
 					ID:      uuid.New().String(),
@@ -191,7 +192,7 @@ func convertContent(project *celtxmodel.Project, authorID string, charMap map[st
 			case celtxmodel.TypeTransition:
 				if currentScene == nil {
 					sceneNumber++
-					currentScene = createDefaultScene(authorID, sceneNumber)
+					currentScene = createDefaultScene(authorID, strconv.Itoa(sceneNumber))
 				}
 				currentScene.Body = append(currentScene.Body, model.Element{
 					ID:      uuid.New().String(),
@@ -211,7 +212,7 @@ func convertContent(project *celtxmodel.Project, authorID string, charMap map[st
 	return content
 }
 
-func createDefaultScene(authorID string, sceneNumber int) *model.Scene {
+func createDefaultScene(authorID string, sceneNumber string) *model.Scene {
 	return &model.Scene{
 		ID:      uuid.New().String(),
 		Authors: []string{authorID},
@@ -225,7 +226,7 @@ func createDefaultScene(authorID string, sceneNumber int) *model.Scene {
 	}
 }
 
-func parseSlugline(text string, sceneNumber int) *model.Slugline {
+func parseSlugline(text string, sceneNumber string) *model.Slugline {
 	slug := &model.Slugline{
 		No:   sceneNumber,
 		Time: "DAY",

@@ -19,26 +19,29 @@ const (
 // This is a unified type that covers all element types.
 type Element struct {
 	// Common fields
-	ID           string       `json:"id"`
-	Type         ElementType  `json:"type"`
-	Scene        string       `json:"scene,omitempty"`
-	Authors      []string     `json:"authors"` // UUIDs
-	Contributors []string     `json:"contributors,omitempty"`
-	Access       []string     `json:"access,omitempty"`
-	Notes        []Note       `json:"notes,omitempty"`
-	Charset      string       `json:"charset,omitempty"`
-	Dir          string       `json:"dir,omitempty"`
-	Class        string       `json:"class,omitempty"`
-	DOM          string       `json:"dom,omitempty"`
-	Encrypt      *Encrypt     `json:"encrypt,omitempty"`
-	Locked       bool         `json:"locked,omitempty"`
-	Omit         bool         `json:"omit,omitempty"`
-	Revisions    []Revision   `json:"revisions,omitempty"`
-	Styles       []string     `json:"styles,omitempty"`
-	Meta         Meta         `json:"meta,omitempty"`
+	ID           string      `json:"id"`
+	Type         ElementType `json:"type"`
+	Scene        string      `json:"scene,omitempty"`
+	Authors      []string    `json:"authors"` // UUIDs
+	Contributors []string    `json:"contributors,omitempty"`
+	Access       []string    `json:"access,omitempty"`
+	Notes        []Note      `json:"notes,omitempty"`
+	Charset      string      `json:"charset,omitempty"`
+	Dir          string      `json:"dir,omitempty"`
+	Class        string      `json:"class,omitempty"`
+	DOM          string      `json:"dom,omitempty"`
+	Encrypt      *Encrypt    `json:"encrypt,omitempty"`
+	Locked       bool        `json:"locked,omitempty"`
+	Omit         bool        `json:"omit,omitempty"`
+	Revisions    []Revision  `json:"revisions,omitempty"`
+	Styles       []string    `json:"styles,omitempty"`
+	Meta         Meta        `json:"meta,omitempty"`
 
 	// Text content (for action, dialogue, parenthetical, transition, shot, general)
 	Text Text `json:"text,omitempty"`
+
+	// Scene number from source format
+	SceneNo string `json:"sceneNo,omitempty"` // Optional scene number (e.g., "1A", "I-1-A")
 
 	// Character-specific fields
 	Character string `json:"character,omitempty"` // UUID for cue and dialogue
@@ -51,6 +54,12 @@ type Element struct {
 	// Shot-specific fields
 	FOV         float64 `json:"fov,omitempty"`
 	Perspective string  `json:"perspective,omitempty"` // 2D or 3D
+
+	// Multi-character dialogue fields
+	Multi               bool     `json:"multi,omitempty"`               // Indicates part of multi-character group
+	MultiGroup          string   `json:"multiGroup,omitempty"`          // UUID linking group elements (character cues, dialogue, parenthetical)
+	MultiCharacters     []string `json:"multiCharacters,omitempty"`     // Character UUIDs in dialogue element
+	AppliesToMultiGroup bool     `json:"appliesToMultiGroup,omitempty"` // For parentheticals that apply to entire group
 }
 
 // Note represents an ancillary note attached to an element.
@@ -137,5 +146,45 @@ func NewGeneral(id string, authors []string, text Text) Element {
 		Type:    ElementGeneral,
 		Authors: authors,
 		Text:    text,
+	}
+}
+
+// NewMultiCharacterCue creates a character cue as part of a multi-character group.
+func NewMultiCharacterCue(id string, authors []string, characterID string, display string, multiGroupID string) Element {
+	return Element{
+		ID:         id,
+		Type:       ElementCharacter,
+		Authors:    authors,
+		Character:  characterID,
+		Display:    display,
+		Multi:      true,
+		MultiGroup: multiGroupID,
+	}
+}
+
+// NewMultiCharacterDialogue creates a dialogue element for a multi-character group.
+func NewMultiCharacterDialogue(id string, authors []string, characterIDs []string, text Text, multiGroupID string, origin string) Element {
+	return Element{
+		ID:              id,
+		Type:            ElementDialogue,
+		Authors:         authors,
+		MultiCharacters: characterIDs,
+		Text:            text,
+		Multi:           true,
+		MultiGroup:      multiGroupID,
+		Origin:          origin,
+	}
+}
+
+// NewMultiCharacterParenthetical creates a parenthetical as part of a multi-character group.
+func NewMultiCharacterParenthetical(id string, authors []string, text Text, multiGroupID string) Element {
+	return Element{
+		ID:                  id,
+		Type:                ElementParenthetical,
+		Authors:             authors,
+		Text:                text,
+		Multi:               true,
+		MultiGroup:          multiGroupID,
+		AppliesToMultiGroup: true,
 	}
 }

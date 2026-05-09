@@ -1,0 +1,9 @@
+Title: Invalid - More Dialogue Than Characters
+Author: Test
+
+INT. CONFERENCE - DAY
+
+JOHN / JANE #1#
+First line. / Second line. / Third line. #1#
+
+This should be rejected: 3 dialogue lines for only 2 characters.

@@ -139,9 +139,13 @@ func formatSlugline(slug *model.Slugline) string {
 func convertElement(elem model.Element, charMap map[string]string, lang string) *ftnmodel.Element {
 	switch elem.Type {
 	case model.ElementAction:
+		text := elem.Text.GetOrDefault(lang)
+		if elem.SceneNo != "" {
+			text = text + " #" + elem.SceneNo + "#"
+		}
 		return &ftnmodel.Element{
 			Type: ftnmodel.ElementAction,
-			Text: elem.Text.GetOrDefault(lang),
+			Text: text,
 		}
 
 	case model.ElementCharacter:
@@ -151,16 +155,25 @@ func convertElement(elem model.Element, charMap map[string]string, lang string) 
 				display = strings.ToUpper(name)
 			}
 		}
+		if elem.SceneNo != "" {
+			display = display + " #" + elem.SceneNo + "#"
+		}
 		return &ftnmodel.Element{
-			Type: ftnmodel.ElementCharacter,
-			Text: display,
-			Dual: elem.Dual,
+			Type:  ftnmodel.ElementCharacter,
+			Text:  display,
+			Multi: elem.Multi,
 		}
 
 	case model.ElementDialogue:
+		text := elem.Text.GetOrDefault(lang)
+		if elem.SceneNo != "" {
+			text = text + " #" + elem.SceneNo + "#"
+		}
 		return &ftnmodel.Element{
-			Type: ftnmodel.ElementDialogue,
-			Text: elem.Text.GetOrDefault(lang),
+			Type:  ftnmodel.ElementDialogue,
+			Text:  text,
+			Dual:  elem.Dual,
+			Multi: elem.Multi,
 		}
 
 	case model.ElementParenthetical:
@@ -173,8 +186,9 @@ func convertElement(elem model.Element, charMap map[string]string, lang string) 
 			text = text + ")"
 		}
 		return &ftnmodel.Element{
-			Type: ftnmodel.ElementParenthetical,
-			Text: text,
+			Type:  ftnmodel.ElementParenthetical,
+			Text:  text,
+			Multi: elem.Multi,
 		}
 
 	case model.ElementTransition:

@@ -645,7 +645,7 @@ curl -X POST http://localhost:8080/validate \
 ```json
 {
   "status": "healthy",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "uptime": "2h15m30s"
 }
 ```
@@ -824,5 +824,5 @@ Contributions welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidel
 ## Links
 
 - [ScreenJSON Specification](https://screenjson.com)
-- [JSON Schema](https://screenjson.com/draft/2026-01/schema)
+- [JSON Schema](https://screenjson.com/draft/2026-04/schema)
 - [Issue Tracker](https://github.com/screenjson/screenjson-cli/issues)

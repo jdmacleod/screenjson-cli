@@ -2,6 +2,7 @@
 package bridge
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -17,7 +18,7 @@ func ToScreenJSON(fdx *fdxmodel.FinalDraft, lang string) *model.Document {
 	}
 
 	authorID := uuid.New().String()
-	
+
 	doc := &model.Document{
 		ID:      uuid.New().String(),
 		Version: "1.0.0",
@@ -83,7 +84,7 @@ func extractCharacters(fdx *fdxmodel.FinalDraft) []model.Character {
 			// Remove extensions like (V.O.), (O.S.), (CONT'D)
 			name = cleanCharacterName(name)
 			upperName := strings.ToUpper(name)
-			
+
 			if name != "" && !seen[upperName] {
 				seen[upperName] = true
 				chars = append(chars, model.Character{
@@ -151,7 +152,7 @@ func convertContent(fdx *fdxmodel.FinalDraft, authorID string, charMap map[strin
 					ID:      uuid.New().String(),
 					Authors: []string{authorID},
 					Heading: &model.Slugline{
-						No:      sceneNumber,
+						No:      strconv.Itoa(sceneNumber),
 						Context: "INT",
 						Setting: "UNKNOWN",
 						Time:    "DAY",
@@ -193,7 +194,7 @@ func convertContent(fdx *fdxmodel.FinalDraft, authorID string, charMap map[strin
 // createScene creates a new scene from a scene heading paragraph.
 func createScene(p fdxmodel.Paragraph, authorID string, sceneNumber int, lang string) *model.Scene {
 	text := strings.TrimSpace(getTextContent(p.Text))
-	
+
 	scene := &model.Scene{
 		ID:      uuid.New().String(),
 		Authors: []string{authorID},
@@ -209,7 +210,7 @@ func createScene(p fdxmodel.Paragraph, authorID string, sceneNumber int, lang st
 // parseSlugline parses a scene heading string into a Slugline.
 func parseSlugline(text string, sceneNumber int) *model.Slugline {
 	slug := &model.Slugline{
-		No:   sceneNumber,
+		No:   strconv.Itoa(sceneNumber),
 		Time: "DAY", // Default
 	}
 
@@ -266,31 +267,43 @@ func convertParagraphToElement(p fdxmodel.Paragraph, authorID string, charMap ma
 
 	switch ptype {
 	case "action":
-		return &model.Element{
+		elem := &model.Element{
 			ID:      uuid.New().String(),
 			Type:    model.ElementAction,
 			Authors: []string{authorID},
 			Text:    model.Text{lang: text},
 		}
+		if p.Number != "" {
+			elem.SceneNo = model.NormalizeSceneNumber(p.Number)
+		}
+		return elem
 
 	case "character":
 		name := cleanCharacterName(strings.TrimSpace(text))
 		charID := charMap[strings.ToUpper(name)]
-		return &model.Element{
+		elem := &model.Element{
 			ID:        uuid.New().String(),
 			Type:      model.ElementCharacter,
 			Authors:   []string{authorID},
 			Character: charID,
 			Display:   text,
 		}
+		if p.Number != "" {
+			elem.SceneNo = model.NormalizeSceneNumber(p.Number)
+		}
+		return elem
 
 	case "dialogue":
-		return &model.Element{
+		elem := &model.Element{
 			ID:      uuid.New().String(),
 			Type:    model.ElementDialogue,
 			Authors: []string{authorID},
 			Text:    model.Text{lang: text},
 		}
+		if p.Number != "" {
+			elem.SceneNo = model.NormalizeSceneNumber(p.Number)
+		}
+		return elem
 
 	case "parenthetical":
 		return &model.Element{

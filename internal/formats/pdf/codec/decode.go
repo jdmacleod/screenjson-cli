@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -52,7 +53,7 @@ func (d *Decoder) Decode(ctx context.Context, data []byte, password string) (*mo
 		return nil, fmt.Errorf("failed to create temp file: %w", err)
 	}
 	defer os.Remove(tmpPDF.Name())
-	
+
 	if _, err := tmpPDF.Write(data); err != nil {
 		tmpPDF.Close()
 		return nil, fmt.Errorf("failed to write temp file: %w", err)
@@ -89,7 +90,7 @@ func (d *Decoder) Decode(ctx context.Context, data []byte, password string) (*mo
 func parsePopplerXML(xmlData []byte) (*model.Document, error) {
 	// Extract text lines with positions
 	lines := extractTextLines(xmlData)
-	
+
 	if len(lines) == 0 {
 		return nil, fmt.Errorf("no text content extracted from PDF")
 	}
@@ -98,7 +99,7 @@ func parsePopplerXML(xmlData []byte) (*model.Document, error) {
 	classified := classifyByMargin(lines)
 
 	authorID := uuid.New().String()
-	
+
 	doc := &model.Document{
 		ID:      uuid.New().String(),
 		Version: "1.0.0",
@@ -154,11 +155,11 @@ func extractTextLines(xmlData []byte) []TextLine {
 	// Basic XML parsing - in production use proper XML parser
 	var lines []TextLine
 	content := string(xmlData)
-	
+
 	// Look for <text> elements with positioning
 	// Format: <text top="123" left="456" ...>content</text>
 	parts := strings.Split(content, "<text ")
-	
+
 	page := 1
 	for _, part := range parts[1:] {
 		// Check for page marker
@@ -173,9 +174,9 @@ func extractTextLines(xmlData []byte) []TextLine {
 				}
 			}
 		}
-		
+
 		var left, top, height float64
-		
+
 		// Extract left position
 		if leftIdx := strings.Index(part, "left=\""); leftIdx >= 0 {
 			start := leftIdx + 6
@@ -184,7 +185,7 @@ func extractTextLines(xmlData []byte) []TextLine {
 				fmt.Sscanf(part[start:start+end], "%f", &left)
 			}
 		}
-		
+
 		// Extract top position
 		if topIdx := strings.Index(part, "top=\""); topIdx >= 0 {
 			start := topIdx + 5
@@ -193,7 +194,7 @@ func extractTextLines(xmlData []byte) []TextLine {
 				fmt.Sscanf(part[start:start+end], "%f", &top)
 			}
 		}
-		
+
 		// Extract height
 		if heightIdx := strings.Index(part, "height=\""); heightIdx >= 0 {
 			start := heightIdx + 8
@@ -202,7 +203,7 @@ func extractTextLines(xmlData []byte) []TextLine {
 				fmt.Sscanf(part[start:start+end], "%f", &height)
 			}
 		}
-		
+
 		// Extract text content
 		closeTag := strings.Index(part, ">")
 		endTag := strings.Index(part, "</text>")
@@ -219,7 +220,7 @@ func extractTextLines(xmlData []byte) []TextLine {
 			}
 		}
 	}
-	
+
 	return lines
 }
 
@@ -232,7 +233,7 @@ func classifyByMargin(lines []TextLine) []ClassifiedLine {
 	// Build histogram of left margins
 	marginCounts := make(map[int]int)
 	for _, line := range lines {
-		margin := int(line.Left / 10) * 10 // Round to nearest 10
+		margin := int(line.Left/10) * 10 // Round to nearest 10
 		marginCounts[margin]++
 	}
 
@@ -250,18 +251,18 @@ func classifyByMargin(lines []TextLine) []ClassifiedLine {
 	// Highest margin = character cues
 
 	var classified []ClassifiedLine
-	
+
 	for _, line := range lines {
-		margin := int(line.Left / 10) * 10
+		margin := int(line.Left/10) * 10
 		text := strings.TrimSpace(line.Text)
 		upper := strings.ToUpper(text)
-		
+
 		var elemType model.ElementType
-		
+
 		// Scene heading detection
 		if strings.HasPrefix(upper, "INT.") || strings.HasPrefix(upper, "INT ") ||
-		   strings.HasPrefix(upper, "EXT.") || strings.HasPrefix(upper, "EXT ") ||
-		   strings.HasPrefix(upper, "INT/EXT") || strings.HasPrefix(upper, "I/E") {
+			strings.HasPrefix(upper, "EXT.") || strings.HasPrefix(upper, "EXT ") ||
+			strings.HasPrefix(upper, "INT/EXT") || strings.HasPrefix(upper, "I/E") {
 			elemType = "scene"
 		} else if strings.HasSuffix(upper, "TO:") || strings.HasSuffix(upper, "OUT.") {
 			// Transition
@@ -279,13 +280,13 @@ func classifyByMargin(lines []TextLine) []ClassifiedLine {
 			// Action (low margin)
 			elemType = model.ElementAction
 		}
-		
+
 		classified = append(classified, ClassifiedLine{
 			TextLine: line,
 			Type:     elemType,
 		})
 	}
-	
+
 	return classified
 }
 
@@ -298,7 +299,7 @@ func extractCharactersFromClassified(lines []ClassifiedLine) []model.Character {
 		if line.Type == model.ElementCharacter {
 			name := cleanCharacterName(line.Text)
 			upperName := strings.ToUpper(name)
-			
+
 			if name != "" && !seen[upperName] {
 				seen[upperName] = true
 				chars = append(chars, model.Character{
@@ -353,7 +354,7 @@ func buildContent(lines []ClassifiedLine, authorID string, charMap map[string]st
 					ID:      uuid.New().String(),
 					Authors: []string{authorID},
 					Heading: &model.Slugline{
-						No:      sceneNumber,
+						No:      strconv.Itoa(sceneNumber),
 						Context: "INT",
 						Setting: "UNKNOWN",
 						Time:    "DAY",
@@ -394,7 +395,7 @@ func buildContent(lines []ClassifiedLine, authorID string, charMap map[string]st
 
 func parseSluglineFromText(text string, sceneNumber int) *model.Slugline {
 	slug := &model.Slugline{
-		No:   sceneNumber,
+		No:   strconv.Itoa(sceneNumber),
 		Time: "DAY",
 	}
 
