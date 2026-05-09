@@ -19,10 +19,10 @@ import (
 	"screenjson/cli/internal/app"
 	"screenjson/cli/internal/config"
 	"screenjson/cli/internal/crypto"
-	fdxbridge "screenjson/cli/internal/formats/fdx/bridge"
-	fdxcodec "screenjson/cli/internal/formats/fdx/codec"
 	fadeinbridge "screenjson/cli/internal/formats/fadein/bridge"
 	fadeincodec "screenjson/cli/internal/formats/fadein/codec"
+	fdxbridge "screenjson/cli/internal/formats/fdx/bridge"
+	fdxcodec "screenjson/cli/internal/formats/fdx/codec"
 	fountainbridge "screenjson/cli/internal/formats/fountain/bridge"
 	fountaincodec "screenjson/cli/internal/formats/fountain/codec"
 	pdfcodec "screenjson/cli/internal/formats/pdf/codec"
@@ -212,7 +212,7 @@ Examples:
 	}
 
 	// Convert to ScreenJSON
-	doc, err := convertToScreenJSON(inputData, format, *lang, *pdfToHTML, *pdfPassword)
+	doc, err := convertToScreenJSON(inputData, format, *lang, *pdfToHTML, *pdfPassword, *verbose)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error converting: %v\n", err)
 		os.Exit(1)
@@ -379,7 +379,7 @@ Examples:
 	}
 
 	var doc model.Document
-	
+
 	// Try JSON first, then YAML
 	if err := json.Unmarshal(inputData, &doc); err != nil {
 		if err := yaml.Unmarshal(inputData, &doc); err != nil {
@@ -481,7 +481,7 @@ Options:`)
 			os.Exit(1)
 		}
 	}
-	
+
 	_ = strict // Suppress unused warning
 }
 
@@ -758,7 +758,7 @@ func cmdFormats() {
 }
 
 // convertToScreenJSON converts input data to a ScreenJSON document.
-func convertToScreenJSON(data []byte, format, lang, pdfToHTML, pdfPassword string) (*model.Document, error) {
+func convertToScreenJSON(data []byte, format, lang, pdfToHTML, pdfPassword string, pdfVerbose bool) (*model.Document, error) {
 	ctx := context.Background()
 
 	switch format {
@@ -793,7 +793,7 @@ func convertToScreenJSON(data []byte, format, lang, pdfToHTML, pdfPassword strin
 		if pdfToHTML == "" {
 			pdfToHTML = "/opt/homebrew/bin/pdftohtml"
 		}
-		decoder := pdfcodec.NewDecoder(pdfToHTML)
+		decoder := pdfcodec.NewDecoder(pdfToHTML, pdfVerbose)
 		if !decoder.IsAvailable() {
 			return nil, fmt.Errorf("PDF import requires pdftohtml (Poppler). Install Poppler or specify --pdftohtml path")
 		}

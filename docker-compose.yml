@@ -11,6 +11,7 @@ services:
       - SCREENJSON_GOTENBERG_URL=http://gotenberg:3000
       - SCREENJSON_TIKA_URL=http://tika:9998
       - SCREENJSON_PDFTOHTML=/usr/bin/pdftohtml
+      - SCREENJSON_PDF_VERBOSE=1
     command: ["serve", "--port", "8080"]
 
   gotenberg:

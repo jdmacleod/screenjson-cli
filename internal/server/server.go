@@ -14,10 +14,10 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"screenjson/cli/internal/app"
-	fdxbridge "screenjson/cli/internal/formats/fdx/bridge"
-	fdxcodec "screenjson/cli/internal/formats/fdx/codec"
 	fadeinbridge "screenjson/cli/internal/formats/fadein/bridge"
 	fadeincodec "screenjson/cli/internal/formats/fadein/codec"
+	fdxbridge "screenjson/cli/internal/formats/fdx/bridge"
+	fdxcodec "screenjson/cli/internal/formats/fdx/codec"
 	fountainbridge "screenjson/cli/internal/formats/fountain/bridge"
 	fountaincodec "screenjson/cli/internal/formats/fountain/codec"
 	pdfcodec "screenjson/cli/internal/formats/pdf/codec"
@@ -338,7 +338,7 @@ func convertToScreenJSON(ctx context.Context, data []byte, format, lang, pdfToHT
 		return fountainbridge.ToScreenJSON(ftn, lang), nil
 
 	case "pdf":
-		decoder := pdfcodec.NewDecoder(pdfToHTML)
+		decoder := pdfcodec.NewDecoder(pdfToHTML, false)
 		if !decoder.IsAvailable() {
 			return nil, fmt.Errorf("PDF import requires pdftohtml (Poppler)")
 		}

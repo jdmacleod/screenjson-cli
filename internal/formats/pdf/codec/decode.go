@@ -19,12 +19,14 @@ var ErrPDFImportDisabled = fmt.Errorf("PDF import is disabled: pdftohtml (Popple
 // Decoder decodes PDF files using Poppler's pdftohtml.
 type Decoder struct {
 	pdfToHtmlPath string
+	verbose       bool
 }
 
 // NewDecoder creates a new PDF decoder.
-func NewDecoder(pdfToHtmlPath string) *Decoder {
+func NewDecoder(pdfToHtmlPath string, verbose bool) *Decoder {
 	return &Decoder{
 		pdfToHtmlPath: pdfToHtmlPath,
+		verbose:       verbose,
 	}
 }
 
@@ -40,6 +42,10 @@ func (d *Decoder) IsAvailable() bool {
 // Decode parses a PDF file into a ScreenJSON document.
 // This uses Poppler's pdftohtml to extract layout-aware XML.
 func (d *Decoder) Decode(ctx context.Context, data []byte, password string) (*model.Document, error) {
+	if d.verbose {
+		fmt.Fprintf(os.Stderr, "[PDF] Decode started: input size %d bytes, password present: %v\n", len(data), password != "")
+	}
+
 	if len(data) == 0 {
 		return nil, fmt.Errorf("empty PDF input")
 	}
@@ -60,20 +66,39 @@ func (d *Decoder) Decode(ctx context.Context, data []byte, password string) (*mo
 	}
 	tmpPDF.Close()
 
-	// Run pdftohtml -xml
+	// Run pdftohtml -xml into a temporary XML file.
+	tmpXML, err := os.CreateTemp("", "screenjson-*.xml")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp xml file: %w", err)
+	}
+	tmpXMLPath := tmpXML.Name()
+	tmpXML.Close()
+	defer os.Remove(tmpXMLPath)
+
 	args := []string{"-xml", "-enc", "UTF-8", "-noframes"}
 	if password != "" {
 		args = append(args, "-upw", password)
 	}
-	args = append(args, tmpPDF.Name(), "-")
+	args = append(args, tmpPDF.Name(), tmpXMLPath)
+
+	if d.verbose {
+		fmt.Fprintf(os.Stderr, "[PDF] Temporary XML output path: %s\n", tmpXMLPath)
+		fmt.Fprintf(os.Stderr, "[PDF] Invoking pdftohtml: %s %s\n", d.pdfToHtmlPath, strings.Join(args, " "))
+	}
 
 	cmd := exec.CommandContext(ctx, d.pdfToHtmlPath, args...)
-	output, err := cmd.Output()
+	stderr, err := cmd.CombinedOutput()
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			return nil, fmt.Errorf("pdftohtml failed: %s", string(exitErr.Stderr))
-		}
-		return nil, fmt.Errorf("pdftohtml failed: %w", err)
+		return nil, fmt.Errorf("pdftohtml failed: %s", strings.TrimSpace(string(stderr)))
+	}
+
+	output, err := os.ReadFile(tmpXMLPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read pdftohtml xml output: %w", err)
+	}
+
+	if d.verbose {
+		fmt.Fprintf(os.Stderr, "[PDF] pdftohtml completed: XML file %s size %d bytes\n", tmpXMLPath, len(output))
 	}
 
 	// Check for OCR (minimal text content)
@@ -82,12 +107,12 @@ func (d *Decoder) Decode(ctx context.Context, data []byte, password string) (*mo
 	}
 
 	// Parse the XML output
-	return parsePopplerXML(output)
+	return d.parsePopplerXML(output)
 }
 
 // parsePopplerXML parses Poppler's XML output into a ScreenJSON document.
 // This uses geometry-based inference to classify elements.
-func parsePopplerXML(xmlData []byte) (*model.Document, error) {
+func (d *Decoder) parsePopplerXML(xmlData []byte) (*model.Document, error) {
 	// Extract text lines with positions
 	lines := extractTextLines(xmlData)
 
@@ -95,8 +120,12 @@ func parsePopplerXML(xmlData []byte) (*model.Document, error) {
 		return nil, fmt.Errorf("no text content extracted from PDF")
 	}
 
+	if d.verbose {
+		fmt.Fprintf(os.Stderr, "[PDF] Line extraction: %d lines found\n", len(lines))
+	}
+
 	// Classify lines based on margin clustering
-	classified := classifyByMargin(lines)
+	classified := d.classifyByMargin(lines)
 
 	authorID := uuid.New().String()
 
@@ -121,8 +150,16 @@ func parsePopplerXML(xmlData []byte) (*model.Document, error) {
 	}
 
 	// Extract characters
-	characters := extractCharactersFromClassified(classified)
+	characters := d.extractCharactersFromClassified(classified)
 	doc.Characters = characters
+
+	if d.verbose {
+		charNames := make([]string, len(characters))
+		for i, c := range characters {
+			charNames[i] = c.Name
+		}
+		fmt.Fprintf(os.Stderr, "[PDF] Character detection: %d unique characters found: %v\n", len(characters), charNames)
+	}
 
 	charMap := make(map[string]string)
 	for _, c := range characters {
@@ -130,7 +167,11 @@ func parsePopplerXML(xmlData []byte) (*model.Document, error) {
 	}
 
 	// Build scenes
-	doc.Content = buildContent(classified, authorID, charMap)
+	doc.Content = d.buildContent(classified, authorID, charMap)
+
+	if d.verbose {
+		fmt.Fprintf(os.Stderr, "[PDF] Document building: %d scenes created\n", len(doc.Content.Scenes))
+	}
 
 	return doc, nil
 }
@@ -225,7 +266,7 @@ func extractTextLines(xmlData []byte) []TextLine {
 }
 
 // classifyByMargin classifies lines based on left margin clustering.
-func classifyByMargin(lines []TextLine) []ClassifiedLine {
+func (d *Decoder) classifyByMargin(lines []TextLine) []ClassifiedLine {
 	if len(lines) == 0 {
 		return nil
 	}
@@ -235,6 +276,31 @@ func classifyByMargin(lines []TextLine) []ClassifiedLine {
 	for _, line := range lines {
 		margin := int(line.Left/10) * 10 // Round to nearest 10
 		marginCounts[margin]++
+	}
+
+	if d.verbose {
+		// Log margin histogram
+		type marginCount struct {
+			margin int
+			count  int
+		}
+		var margins []marginCount
+		for m, c := range marginCounts {
+			margins = append(margins, marginCount{m, c})
+		}
+		// Sort by margin for readability
+		for i := 0; i < len(margins)-1; i++ {
+			for j := i + 1; j < len(margins); j++ {
+				if margins[i].margin > margins[j].margin {
+					margins[i], margins[j] = margins[j], margins[i]
+				}
+			}
+		}
+		marginStr := "Margin histogram:"
+		for _, mc := range margins {
+			marginStr += fmt.Sprintf(" %dpx(%d)", mc.margin, mc.count)
+		}
+		fmt.Fprintf(os.Stderr, "[PDF] Classification: %s\n", marginStr)
 	}
 
 	// Find dominant margins
@@ -287,11 +353,21 @@ func classifyByMargin(lines []TextLine) []ClassifiedLine {
 		})
 	}
 
+	if d.verbose {
+		typeCounts := make(map[model.ElementType]int)
+		for _, c := range classified {
+			typeCounts[c.Type]++
+		}
+		fmt.Fprintf(os.Stderr, "[PDF] Element classification: action=%d, dialogue=%d, character=%d, parenthetical=%d, scene=%d, transition=%d\n",
+			typeCounts[model.ElementAction], typeCounts[model.ElementDialogue], typeCounts[model.ElementCharacter],
+			typeCounts[model.ElementParenthetical], "scene", typeCounts[model.ElementTransition])
+	}
+
 	return classified
 }
 
 // extractCharactersFromClassified extracts unique character names.
-func extractCharactersFromClassified(lines []ClassifiedLine) []model.Character {
+func (d *Decoder) extractCharactersFromClassified(lines []ClassifiedLine) []model.Character {
 	seen := make(map[string]bool)
 	var chars []model.Character
 
@@ -321,7 +397,7 @@ func cleanCharacterName(name string) string {
 }
 
 // buildContent builds ScreenJSON content from classified lines.
-func buildContent(lines []ClassifiedLine, authorID string, charMap map[string]string) *model.Content {
+func (d *Decoder) buildContent(lines []ClassifiedLine, authorID string, charMap map[string]string) *model.Content {
 	content := &model.Content{
 		Cover: &model.Cover{
 			Title:   model.Text{"en": "Imported PDF"},

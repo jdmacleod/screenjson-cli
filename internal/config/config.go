@@ -26,7 +26,8 @@ type Config struct {
 	LLM       LLMConfig
 
 	// PDF
-	PDF PDFConfig
+	PDF        PDFConfig
+	PDFVerbose bool
 
 	// Encryption
 	EncryptKey string
@@ -216,6 +217,11 @@ func (c *Config) LoadFromEnv() {
 	}
 	if v := os.Getenv("SCREENJSON_PDF_FONT"); v != "" {
 		c.PDF.Font = strings.ToLower(v)
+	}
+	if v := os.Getenv("SCREENJSON_PDF_VERBOSE"); v != "" {
+		if verbose, err := strconv.ParseBool(v); err == nil {
+			c.PDFVerbose = verbose
+		}
 	}
 
 	// Encryption
